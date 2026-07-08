@@ -139,12 +139,31 @@ async function renderAuthor(authorId) {
 // ========== 重置密码处理 ==========
 async function handleResetPassword() {
   var app = document.getElementById("app");
+  app.innerHTML = '<div class="login-box"><h2>⏳</h2><p style="color:#94a3b8">正在验证重置链接...</p></div>';
   
-  // Check if we have recovery tokens in URL
   var hash = location.hash;
   var hasToken = hash.includes("type=recovery") || hash.includes("access_token");
   
   if (hasToken) {
+    try {
+      // Parse tokens from hash fragment
+      var params = {};
+      var hashStr = hash.substring(1);
+      hashStr.split("&").forEach(function(p) {
+        var parts = p.split("=");
+        if (parts.length === 2) params[parts[0]] = decodeURIComponent(parts[1]);
+      });
+      
+      if (params.access_token && params.refresh_token) {
+        await supabase.auth.setSession({
+          access_token: params.access_token,
+          refresh_token: params.refresh_token
+        });
+      }
+    } catch(e) {
+      console.log("Session setup:", e.message);
+    }
+    
     app.innerHTML = '<div class="login-box"><h2>🔑 设置新密码</h2><p style="color:#64748b;margin-bottom:16px">请输入你的新密码</p><form onsubmit="event.preventDefault();var pwd=document.getElementById(\'new-pwd\').value;var pwd2=document.getElementById(\'new-pwd2\').value;if(!pwd||pwd.length<6){alert(\'密码至少6位\');return;}if(pwd!==pwd2){alert(\'两次密码不一致\');return;}completeReset(pwd);"><div class="form-group"><input type="password" id="new-pwd" placeholder="新密码（6位以上）*" required minlength="6"></div><div class="form-group"><input type="password" id="new-pwd2" placeholder="确认新密码 *" required minlength="6"></div><button type="submit" class="btn-primary" style="width:100%">💾 重置密码</button></form></div>';
   } else {
     app.innerHTML = '<div class="login-box"><h2>🔗 无效的重置链接</h2><p style="color:#94a3b8;margin:16px 0">此链接无效或已过期，请重新申请密码重置。</p><a href="#/login" class="btn-primary" style="display:block;text-align:center">返回登录</a></div>';
