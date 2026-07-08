@@ -17,7 +17,7 @@ function getRoute() {
 
 async function render() { try {
   var route = getRoute();
-  await checkAuth();
+  try { await checkAuth(); } catch(e) { console.log("Auth check failed:", e.message); }
   if (route.page === "home") await renderHome(route.category);
   else if (route.page === "detail") await renderDetail(route.id);
   else if (route.page === "create") renderCreate();
@@ -33,7 +33,7 @@ window.addEventListener("load", render);
 // ========== 首页 ==========
 async function renderHome(category) {
   var app = document.getElementById("app");
-  app.innerHTML = '<div class="hero"><h1>🪄 发现优质 AI 提示词</h1><p>覆盖文案、设计、编程、教育等 7 大分类</p><p style="font-size:13px;margin-top:4px">创作者发布赚钱 · 用户一键复制使用</p></div><div style="text-align:center;margin-bottom:20px"><span class="cat-tab active" id="sort-new" onclick="setSort('newest')">🆕 最新</span><span class="cat-tab" id="sort-hot" onclick="setSort('popular')">🔥 最热</span><span class="cat-tab" id="sort-free" onclick="setSort('free')">🆓 免费</span></div><div class="search-bar"><span class="search-icon">🔍</span><input type="text" id="search-input" placeholder="搜索提示词..."></div><div class="categories" id="cat-tabs"><span class="cat-tab'+(category?'':' active')+'" data-cat="" onclick="filterByCategory(\'\')">🔥 全部</span>'+CATEGORIES.map(function(c){return '<span class="cat-tab'+(category===c.id?' active':'')+'" data-cat="'+c.id+'" onclick="filterByCategory(\''+c.id+'\')">'+c.icon+' '+c.name+'</span>';}).join("")+'</div><div id="prompt-grid" class="grid"><div class="empty" style="grid-column:1/-1"><div class="icon">⏳</div><p>加载中...</p></div></div>';
+  app.innerHTML = '<div class="hero"><h1>🪄 发现优质 AI 提示词</h1><p>覆盖文案、设计、编程、教育等 7 大分类</p><p style="font-size:13px;margin-top:4px">创作者发布赚钱 · 用户一键复制使用</p></div><div style="text-align:center;margin-bottom:20px"><span class="cat-tab active" id="sort-new" onclick="setSort('newest')">🆕 最新</span><span class="cat-tab" id="sort-popular" onclick="setSort('newest')">🔥 最热</span><span class="cat-tab" id="sort-free" onclick="setSort('free')">🆓 免费</span></div><div class="search-bar"><span class="search-icon">🔍</span><input type="text" id="search-input" placeholder="搜索提示词..."></div><div class="categories" id="cat-tabs"><span class="cat-tab'+(category?'':' active')+'" data-cat="" onclick="filterByCategory(\'\')">🔥 全部</span>'+CATEGORIES.map(function(c){return '<span class="cat-tab'+(category===c.id?' active':'')+'" data-cat="'+c.id+'" onclick="filterByCategory(\''+c.id+'\')">'+c.icon+' '+c.name+'</span>';}).join("")+'</div><div id="prompt-grid" class="grid"><div class="empty" style="grid-column:1/-1"><div class="icon">⏳</div><p>加载中...</p></div></div>';
   loadPrompts(category);
   var timer;
   document.getElementById("search-input").addEventListener("input", function(){clearTimeout(timer);var q=this.value;timer=setTimeout(function(){loadPrompts(category,q);},400);});
@@ -44,7 +44,7 @@ var currentCategory = "";
 function setSort(sort){
   currentSort = sort;
   document.querySelectorAll("#sort-new,#sort-hot,#sort-free").forEach(function(t){t.classList.remove("active");});
-  document.getElementById("sort-"+sort).classList.add("active");
+  document.getElementById("sort-"+sort)||document.getElementById("sort-"+(sort==="popular"?"hot":sort)).classList.add("active");
   loadPrompts(currentCategory, document.getElementById("search-input")?.value||"");
 }
 function filterByCategory(cat){document.querySelectorAll(".cat-tab").forEach(function(t){t.classList.toggle("active",t.dataset.cat===cat);});loadPrompts(cat,document.getElementById("search-input")?.value||"");}
