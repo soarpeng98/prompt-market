@@ -30,3 +30,35 @@ async function createPrompt(prompt) {
   if (error) alert("创建失败: " + error.message);
   return data;
 }
+
+async function toggleFavorite(promptId) {
+  if (!currentUser) return false;
+  var { data: existing } = await supabase.from("favorites").select("*").eq("user_id", currentUser.id).eq("prompt_id", promptId).single();
+  if (existing) {
+    await supabase.from("favorites").delete().eq("id", existing.id);
+    return false;
+  } else {
+    await supabase.from("favorites").insert({ user_id: currentUser.id, prompt_id: promptId });
+    return true;
+  }
+}
+async function isFavorited(promptId) {
+  if (!currentUser) return false;
+  var { data } = await supabase.from("favorites").select("*").eq("user_id", currentUser.id).eq("prompt_id", promptId).single();
+  return !!data;
+}
+async function getMyFavorites() {
+  if (!currentUser) return [];
+  var { data } = await supabase.from("favorites").select("prompt_id, prompts(*)").eq("user_id", currentUser.id);
+  return (data||[]).map(function(f){ return f.prompts; }).filter(Boolean);
+}
+async function getMyPrompts() {
+  if (!currentUser) return [];
+  var { data } = await supabase.from("prompts").select("*").eq("author_id", currentUser.id).order("created_at", { ascending: false });
+  return data || [];
+}
+async function getMyPurchases() {
+  if (!currentUser) return [];
+  var { data } = await supabase.from("purchases").select("prompt_id, prompts(*)").eq("user_id", currentUser.id);
+  return (data||[]).map(function(p){ return p.prompts; }).filter(Boolean);
+}
