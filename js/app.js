@@ -10,8 +10,11 @@ window.addEventListener("error", function(e) {
 function getRoute() {
   var hash = location.hash.slice(1) || "/";
   if (hash.startsWith("/prompt/")) return { page: "detail", id: hash.split("/")[2] };
+  if (hash.startsWith("/collection/")) return { page: "collection", id: hash.split("/")[2] };
   if (hash.startsWith("/author/")) return { page: "author", id: hash.split("/")[2] };
   if (hash.startsWith("/category/")) return { page: "home", category: hash.split("/")[2] };
+  if (hash === "/collections") return { page: "collections" };
+  if (hash === "/stats") return { page: "stats" };
   return { page: hash.slice(1) || "home" };
 }
 
@@ -25,6 +28,9 @@ async function render() {
     else if (route.page === "login") renderLogin();
     else if (route.page === "profile") renderProfile();
   else if (route.page === "author") renderAuthor(route.id);
+  else if (route.page === "collections") renderCollections();
+  else if (route.page === "collection") renderCollectionDetail(route.id);
+  else if (route.page === "stats") renderStats();
     else renderHome();
   } catch(e) {
     var a = document.getElementById("app");
@@ -82,9 +88,9 @@ async function purchase(promptId){if(!currentUser){navigateTo("/login");return;}
 
 // ========== 创建页 ==========
 function renderCreate(){var app=document.getElementById("app");if(!currentUser){navigateTo("/login");return;}
-app.innerHTML='<div class="detail"><h1 style="margin-bottom:24px">✍️ 发布新提示词</h1><div class="form-group"><label>标题 *</label><input type="text" id="new-title" placeholder="例：小红书爆款文案生成器"></div><div class="form-group"><label>分类 *</label><select id="new-category">'+CATEGORIES.map(function(c){return'<option value="'+c.id+'">'+c.icon+' '+c.name+'</option>';}).join("")+'</select></div><div class="form-group"><label>适用平台</label><div style="display:flex;flex-wrap:wrap;gap:6px" id="platform-tags">'+PLATFORMS.map(function(p){return'<span class="cat-tab" data-p="'+p+'" onclick="this.classList.toggle(\'active\')">'+p+'</span>';}).join("")+'</div></div><div class="form-group"><label>描述</label><textarea id="new-desc" placeholder="简要说明用途和效果"></textarea></div><div class="form-group"><label>Prompt 正文 *</label><textarea id="new-content" placeholder="粘贴你的 Prompt..." style="min-height:200px"></textarea></div><div class="form-group"><label>价格（元）</label><input type="number" id="new-price" value="0" min="0" max="999" step="0.01" style="width:200px"><span style="color:#64748b;font-size:12px;margin-left:8px">0=免费</span></div><button class="btn-primary" id="submit-btn" onclick="submitPrompt()">🚀 发布</button></div>';}
+app.innerHTML='<div class="detail"><h1 style="margin-bottom:24px">✍️ 发布新提示词</h1><div class="form-group"><label>标题 *</label><input type="text" id="new-title" placeholder="例：小红书爆款文案生成器"></div><div class="form-group"><label>分类 *</label><select id="new-category">'+CATEGORIES.map(function(c){return'<option value="'+c.id+'">'+c.icon+' '+c.name+'</option>';}).join("")+'</select></div><div class="form-group"><label>适用平台</label><div style="display:flex;flex-wrap:wrap;gap:6px" id="platform-tags">'+PLATFORMS.map(function(p){return'<span class="cat-tab" data-p="'+p+'" onclick="this.classList.toggle(\'active\')">'+p+'</span>';}).join("")+'</div></div><div class="form-group"><label>描述</label><textarea id="new-desc" placeholder="简要说明用途和效果"></textarea></div><div class="form-group"><label>Prompt 正文 *</label><textarea id="new-content" placeholder="粘贴你的 Prompt..." style="min-height:200px"></textarea></div><div class="form-group"><label>标签（用逗号分隔，如: SEO,电商,写作）</label><input type="text" id="new-tags" placeholder="SEO,电商,写作"></div><div class="form-group"><label>价格（元）</label><input type="number" id="new-price" value="0" min="0" max="999" step="0.01" style="width:200px"><span style="color:#64748b;font-size:12px;margin-left:8px">0=免费</span></div><button class="btn-primary" id="submit-btn" onclick="submitPrompt()">🚀 发布</button></div>';}
 
-async function submitPrompt(){var title=document.getElementById("new-title").value.trim();var content=document.getElementById("new-content").value.trim();if(!title||!content){alert("标题和内容不能为空");return;}var platforms=[];document.querySelectorAll("#platform-tags .cat-tab.active").forEach(function(t){platforms.push(t.dataset.p);});var btn=document.getElementById("submit-btn");btn.disabled=true;btn.textContent="发布中...";var prompt={title:title,category:document.getElementById("new-category").value,platforms:platforms,description:document.getElementById("new-desc").value.trim(),content:content,price:Math.round(parseFloat(document.getElementById("new-price").value||0)*100)};var result=await createPrompt(prompt);if(result){showToast("🎉 发布成功！");navigateTo("/prompt/"+result.id);}else{btn.disabled=false;btn.textContent="🚀 发布";}}
+async function submitPrompt(){var title=document.getElementById("new-title").value.trim();var content=document.getElementById("new-content").value.trim();if(!title||!content){alert("标题和内容不能为空");return;}var platforms=[];document.querySelectorAll("#platform-tags .cat-tab.active").forEach(function(t){platforms.push(t.dataset.p);});var btn=document.getElementById("submit-btn");btn.disabled=true;btn.textContent="发布中...";var prompt={title:title,category:document.getElementById("new-category").value,platforms:platforms,description:document.getElementById("new-desc").value.trim(),content:content,tags:tags,price:Math.round(parseFloat(document.getElementById("new-price").value||0)*100)};var result=await createPrompt(prompt);if(result){showToast("🎉 发布成功！");navigateTo("/prompt/"+result.id);}else{btn.disabled=false;btn.textContent="🚀 发布";}}
 
 // ========== 登录页 ==========
 function renderLogin(tab){var app=document.getElementById("app");if(currentUser){navigateTo("/");return;}tab=tab||"login";
@@ -122,6 +128,90 @@ async function renderAuthor(authorId) {
   app.innerHTML = html;
 }
 
+
+// ========== 精选轮播 ==========
+async function renderFeatured() {
+  var section = document.getElementById("featured-section");
+  if (!section) return;
+  var featured = await getFeaturedPrompts();
+  if (!featured.length) { section.innerHTML = ""; return; }
+  var html = '<div class="featured-wrap"><div class="featured-title">⭐ 精选推荐</div><div class="featured-scroll">' +
+    featured.map(function(p) {
+      return '<a href="#/prompt/' + p.id + '" class="featured-card"><span class="featured-cat">' + getCatIcon(p.category) + ' ' + getCatName(p.category) + '</span><h4>' + escapeHtml(p.title) + '</h4><span class="featured-meta">⭐ ' + (p.rating || 0) + ' 📥 ' + (p.downloads || 0) + '</span></a>';
+    }).join("") + '</div></div>';
+  section.innerHTML = html;
+}
+
+// ========== 标签筛选 ==========
+var currentTag = "";
+function filterByTag(tag) {
+  currentTag = tag;
+  var input = document.getElementById("search-input");
+  if (input) input.value = "#" + tag;
+  loadPrompts(currentCategory, "#" + tag);
+}
+
+// ========== 合集管理 ==========
+async function renderCollections() {
+  var app = document.getElementById("app");
+  app.innerHTML = '<div class="empty"><div class="icon">⏳</div><p>加载中...</p></div>';
+  var collections = await getMyCollections();
+  var html = '<div class="detail"><a href="#/profile" class="back-btn">← 返回</a><div style="display:flex;justify-content:space-between;align-items:center"><h1>📁 我的合集</h1><button class="btn-primary" onclick="showCreateCollection()" style="padding:8px 16px;font-size:14px">+ 新建合集</button></div>';
+  if (!collections.length) {
+    html += '<div class="empty"><div class="icon">📭</div><p>还没有合集</p></div>';
+  } else {
+    html += '<div class="grid" style="margin-top:20px">' + collections.map(function(c) {
+      return '<a href="#/collection/' + c.id + '" class="card"><h3>📁 ' + escapeHtml(c.name) + '</h3><div class="card-desc">' + escapeHtml(c.description || "暂无描述") + '</div><div class="card-meta"><span style="color:#64748b;font-size:12px">' + (c.is_public ? "🌐 公开" : "🔒 私密") + '</span></div></a>';
+    }).join("") + '</div>';
+  }
+  html += '</div>';
+  app.innerHTML = html;
+}
+
+function showCreateCollection() {
+  var name = prompt("合集名称：");
+  if (!name) return;
+  var desc = prompt("合集描述（可选）：");
+  createCollection(name, desc).then(function(c) {
+    if (c) renderCollections();
+  });
+}
+
+async function renderCollectionDetail(id) {
+  var app = document.getElementById("app");
+  app.innerHTML = '<div class="empty"><div class="icon">⏳</div><p>加载中...</p></div>';
+  var items = await getCollectionItems(id);
+  var { data: collections } = await supabase.from("collections").select("*").eq("id", id).single();
+  var col = collections;
+  if (!col) { app.innerHTML = '<div class="empty"><div class="icon">❌</div><p>合集不存在</p></div>'; return; }
+  var html = '<div class="detail"><a href="#/collections" class="back-btn">← 返回合集</a><h1>📁 ' + escapeHtml(col.name) + '</h1><p style="color:#94a3b8;margin-bottom:20px">' + escapeHtml(col.description || "") + '</p>';
+  if (!items.length) {
+    html += '<div class="empty"><div class="icon">📭</div><p>合集为空</p></div>';
+  } else {
+    html += '<div class="grid">' + items.map(function(p) {
+      return '<a href="#/prompt/' + p.id + '" class="card"><div class="card-cat">' + getCatIcon(p.category) + ' ' + getCatName(p.category) + '</div><h3>' + escapeHtml(p.title) + '</h3><div class="card-desc">' + escapeHtml(p.description || "") + '</div></a>';
+    }).join("") + '</div>';
+  }
+  html += '<div style="margin-top:20px;text-align:center"><button class="btn-secondary" onclick="deleteCollection(\'' + id + '\');navigateTo(\'#/collections\')">🗑️ 删除合集</button></div></div>';
+  app.innerHTML = html;
+}
+
+// ========== 数据统计 ==========
+async function renderStats() {
+  var app = document.getElementById("app");
+  app.innerHTML = '<div class="empty"><div class="icon">⏳</div><p>加载中...</p></div>';
+  var stats = await getMyStats();
+  var prompts = await getMyPrompts();
+  var html = '<div class="detail"><a href="#/profile" class="back-btn">← 返回</a><h1>📊 数据统计</h1><div class="stats-grid"><div class="stat-card"><div class="stat-num">' + stats.promptCount + '</div><div class="stat-label">发布数量</div></div><div class="stat-card"><div class="stat-num">' + stats.totalDownloads + '</div><div class="stat-label">总下载</div></div><div class="stat-card"><div class="stat-num">' + stats.totalFavorites + '</div><div class="stat-label">总收藏</div></div></div>';
+  if (prompts.length) {
+    html += '<h3 style="margin:24px 0 16px">📋 各 Prompt 表现</h3><div style="display:flex;flex-direction:column;gap:8px">' + prompts.map(function(p) {
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#111827;border:1px solid #1e293b;border-radius:10px"><div><strong>' + escapeHtml(p.title) + '</strong><div style="font-size:12px;color:#64748b;margin-top:2px">' + getCatName(p.category) + '</div></div><div style="display:flex;gap:16px;font-size:13px;color:#94a3b8"><span>📥 ' + (p.downloads || 0) + '</span><span>⭐ ' + (p.rating || 0) + '</span></div></div>';
+    }).join("") + '</div>';
+  }
+  html += '</div>';
+  app.innerHTML = html;
+}
+
 // ========== 工具函数 ==========
 function getCatName(id){var c=CATEGORIES.find(function(x){return x.id===id});return c?c.name:id;}
 function getCatIcon(id){var c=CATEGORIES.find(function(x){return x.id===id});return c?c.icon:"📌";}
@@ -138,7 +228,7 @@ async function saveEdit(id){
   var title=document.getElementById("edit-title").value.trim();
   var content=document.getElementById("edit-content").value.trim();
   if(!title||!content){alert("标题和内容不能为空");return;}
-  var ok=await updatePrompt(id,{title:title,description:document.getElementById("edit-desc").value.trim(),content:content,price:Math.round(parseFloat(document.getElementById("edit-price").value||0)*100)});
+  var ok=await updatePrompt(id,{title:title,description:document.getElementById("edit-desc").value.trim(),content:content,tags:tags,price:Math.round(parseFloat(document.getElementById("edit-price").value||0)*100)});
   if(ok){showToast("✅ 已保存");navigateTo("/prompt/"+id);}
 }
 

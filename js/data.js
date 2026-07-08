@@ -103,3 +103,70 @@ async function getAuthorInfo(authorId) {
   var { data } = await supabase.from("profiles").select("*").eq("id", authorId).single();
   return data;
 }
+
+
+// 精选推荐
+async function getFeaturedPrompts() {
+  var { data } = await supabase.from("prompts").select("*").eq("featured", true).order("rating", { ascending: false }).limit(6);
+  return data || [];
+}
+
+// 合集
+async function createCollection(name, description) {
+  var { data, error } = await supabase.from("collections").insert({
+    user_id: currentUser.id, name: name, description: description || ""
+  }).select().single();
+  if (error) { alert("创建失败: " + error.message); return null; }
+  return data;
+}
+async function getMyCollections() {
+  if (!currentUser) return [];
+  var { data } = await supabase.from("collections").select("*").eq("user_id", currentUser.id).order("created_at", { ascending: false });
+  return data || [];
+}
+async function getPublicCollections(userId) {
+  var query = supabase.from("collections").select("*").eq("is_public", true).order("created_at", { ascending: false });
+  if (userId) query = query.eq("user_id", userId);
+  var { data } = await query;
+  return data || [];
+}
+async function getCollectionItems(collectionId) {
+  var { data } = await supabase.from("collection_items").select("prompt_id, prompts(*)").eq("collection_id", collectionId).order("sort_order", { ascending: true });
+  return (data || []).map(function(i) { return i.prompts; }).filter(Boolean);
+}
+async function addToCollection(collectionId, promptId) {
+  var { error } = await supabase.from("collection_items").insert({
+    collection_id: collectionId, prompt_id: promptId
+  });
+  return !error;
+}
+async function removeFromCollection(collectionId, promptId) {
+  var { error } = await supabase.from("collection_items").delete().eq("collection_id", collectionId).eq("prompt_id", promptId);
+  return !error;
+}
+async function deleteCollection(collectionId) {
+  await supabase.from("collections").delete().eq("id", collectionId).eq("user_id", currentUser.id);
+}
+
+// 统计
+async function getMyStats() {
+  if (!currentUser) return { totalViews: 0, totalDownloads: 0, totalFavorites: 0, prompts: [] };
+  var all = await getMyPrompts();
+  var totalViews = 0, totalDownloads = 0, totalFavorites = 0;
+  all.forEach(function(p) {
+    totalDownloads += (p.downloads || 0);
+  });
+  // Get favorites count
+  var { data: favs } = await supabase.from("favorites").select("prompt_id").in("prompt_id", all.map(function(p) { return p.id; }));
+  totalFavorites = (favs || []).length;
+  // Recent stats
+  var sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  var { data: stats } = await supabase.from("prompt_stats").select("*").in("prompt_id", all.map(function(p) { return p.id; })).gte("stat_date", sevenDaysAgo.toISOString().split("T")[0]);
+  (stats || []).forEach(function(s) {
+    totalViews += (s.view_count || 0);
+    totalDownloads += (s.download_count || 0);
+    totalFavorites += (s.favorite_count || 0);
+  });
+  return { totalViews: totalViews, totalDownloads: totalDownloads, totalFavorites: totalFavorites, promptCount: all.length };
+}

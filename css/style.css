@@ -156,3 +156,33 @@ footer{text-align:center;padding:40px;color:#334155;font-size:13px;border-top:1p
   .hero h1{font-size:20px}
   .card .card-meta{flex-direction:column;align-items:flex-start;gap:4px}
 }
+
+/* ========== 精选推荐 ========== */
+.featured-wrap{margin-bottom:28px}
+.featured-title{font-size:16px;font-weight:700;color:#f1f5f9;margin-bottom:12px}
+.featured-scroll{display:flex;gap:14px;overflow-x:auto;padding-bottom:8px;-webkit-overflow-scrolling:touch;scroll-snap-type:x mandatory}
+.featured-scroll::-webkit-scrollbar{height:4px}
+.featured-scroll::-webkit-scrollbar-thumb{background:#334155;border-radius:2px}
+.featured-card{min-width:240px;background:linear-gradient(135deg,#1e293b,#0f172a);border:1px solid #334155;border-radius:14px;padding:18px;scroll-snap-align:start;text-decoration:none;color:inherit;transition:border-color .2s;flex-shrink:0}
+.featured-card:hover{border-color:#6366f1}
+.featured-card .featured-cat{font-size:11px;color:#6366f1;font-weight:600}
+.featured-card h4{font-size:15px;margin:8px 0;color:#f1f5f9}
+.featured-card .featured-meta{font-size:12px;color:#64748b}
+
+/* ========== 标签 ========== */
+.tag-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.tag-badge{display:inline-block;padding:2px 10px;border-radius:6px;font-size:11px;background:#1e293b;color:#818cf8;border:1px solid #312e81;cursor:pointer;transition:all .15s;text-decoration:none}
+.tag-badge:hover{background:#312e81;color:#a5b4fc}
+
+/* ========== 统计面板 ========== */
+.stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:32px}
+.stat-card{background:#111827;border:1px solid #1e293b;border-radius:14px;padding:24px;text-align:center}
+.stat-card .stat-num{font-size:32px;font-weight:800;background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.stat-card .stat-label{font-size:13px;color:#64748b;margin-top:4px}
+
+@media(max-width:768px){
+  .stats-grid{grid-template-columns:repeat(3,1fr);gap:10px}
+  .stat-card{padding:16px}
+  .stat-card .stat-num{font-size:24px}
+  .featured-card{min-width:200px}
+}
