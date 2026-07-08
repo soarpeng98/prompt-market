@@ -10,6 +10,7 @@ window.addEventListener("error", function(e) {
 function getRoute() {
   var hash = location.hash.slice(1) || "/";
   if (hash.startsWith("/prompt/")) return { page: "detail", id: hash.split("/")[2] };
+  if (hash.startsWith("/author/")) return { page: "author", id: hash.split("/")[2] };
   if (hash.startsWith("/category/")) return { page: "home", category: hash.split("/")[2] };
   return { page: hash.slice(1) || "home" };
 }
@@ -23,6 +24,7 @@ async function render() {
     else if (route.page === "create") renderCreate();
     else if (route.page === "login") renderLogin();
     else if (route.page === "profile") renderProfile();
+  else if (route.page === "author") renderAuthor(route.id);
     else renderHome();
   } catch(e) {
     var a = document.getElementById("app");
@@ -100,6 +102,25 @@ app.innerHTML='<div class="detail"><h1>👤 个人中心</h1><p style="color:#94
 loadProfileContent(tab);}
 
 async function loadProfileContent(tab){var container=document.getElementById("profile-content");if(!container)return;var prompts;if(tab==="published")prompts=await getMyPrompts();else if(tab==="favorites")prompts=await getMyFavorites();else prompts=await getMyPurchases();if(!prompts||prompts.length===0){container.innerHTML='<div class="empty"><div class="icon">📭</div><p>暂无内容</p></div>';return;}container.innerHTML=prompts.map(function(p){return'<a href="#/prompt/'+p.id+'" class="card" style="margin-bottom:12px"><div class="card-cat">'+getCatIcon(p.category)+' '+getCatName(p.category)+'</div><h3>'+escapeHtml(p.title)+'</h3><div class="card-desc">'+escapeHtml(p.description||"")+'</div><div class="card-meta"><span class="card-price'+(p.price===0?' free':'')+'">'+(p.price===0?'免费':'¥'+(p.price/100).toFixed(2))+'</span><span class="card-stats">📥 '+(p.downloads||0)+'</span></div></a>';}).join("");}
+
+
+// ========== 创作者主页 ==========
+async function renderAuthor(authorId) {
+  var app = document.getElementById("app");
+  app.innerHTML = '<div class="empty"><div class="icon">⏳</div><p>加载中...</p></div>';
+  var info = await getAuthorInfo(authorId);
+  var prompts = await getAuthorPrompts(authorId);
+  var name = info ? (info.username || "匿名创作者") : "创作者";
+  var html = '<div class="author-header"><a href="#/" class="back-btn">← 返回</a><div style="text-align:center;padding:32px 0"><div class="author-avatar">' + (name[0] || "?") + '</div><h1 style="font-size:24px;margin:12px 0 4px">' + escapeHtml(name) + '</h1><p style="color:#94a3b8;font-size:14px">📝 ' + prompts.length + ' 个提示词</p></div></div>';
+  if (prompts.length === 0) {
+    html += '<div class="empty"><div class="icon">📭</div><p>暂无作品</p></div>';
+  } else {
+    html += '<div class="grid">' + prompts.map(function(p) {
+      return '<a href="#/prompt/' + p.id + '" class="card"><div class="card-cat">' + getCatIcon(p.category) + ' ' + getCatName(p.category) + '</div><h3>' + escapeHtml(p.title) + '</h3><div class="card-desc">' + escapeHtml(p.description || "") + '</div><div class="card-meta"><span class="card-price' + (p.price === 0 ? ' free' : '') + '">' + (p.price === 0 ? '免费' : '¥' + (p.price / 100).toFixed(2)) + '</span><span class="card-stats">📥 ' + (p.downloads || 0) + ' ⭐ ' + (p.rating || 0) + '</span></div></a>';
+    }).join("") + '</div>';
+  }
+  app.innerHTML = html;
+}
 
 // ========== 工具函数 ==========
 function getCatName(id){var c=CATEGORIES.find(function(x){return x.id===id});return c?c.name:id;}
