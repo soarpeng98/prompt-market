@@ -1,3 +1,9 @@
+﻿
+// DEBUG: catch all errors
+window.addEventListener("error", function(e) {
+  var app = document.getElementById("app");
+  if (app) app.innerHTML = '<div style="padding:40px;color:red;text-align:center"><h2>❌ JS Error</h2><pre style="background:#1a1a2e;padding:16px;border-radius:8px;text-align:left;overflow:auto;color:#f87171">' + (e.message || e.error?.message || "unknown") + '\n\n' + (e.filename || "") + ':' + (e.lineno || "") + ':' + (e.colno || "") + '</pre></div>';
+});
 // ============================================
 // 提示词PRO - 主应用逻辑 v1.1
 // ============================================
