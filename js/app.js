@@ -48,7 +48,7 @@ window.addEventListener("load", render);
 // ========== 首页 ==========
 async function renderHome(category) {
   var app = document.getElementById("app");
-  app.innerHTML = '<div class="hero"><h1>🪄 发现优质 AI 提示词</h1><p>覆盖文案、设计、编程、教育等 7 大分类</p><p style="font-size:13px;margin-top:4px">创作者发布赚钱 · 用户一键复制使用</p></div><div style="text-align:center;margin-bottom:20px"><span class="cat-tab active" id="sort-new" onclick="setSort(\'newest\')">🆕 最新</span><span class="cat-tab" id="sort-popular" onclick="setSort(\'popular\')">🔥 最热</span><span class="cat-tab" id="sort-free" onclick="setSort(\'free\')">🆓 免费</span></div><div class="search-bar"><span class="search-icon">🔍</span><input type="text" id="search-input" placeholder="搜索提示词..."></div><div class="categories" id="cat-tabs"><span class="cat-tab'+(category?'':' active')+'" data-cat="" onclick="filterByCategory(\'\')">🔥 全部</span>'+CATEGORIES.map(function(c){return '<span class="cat-tab'+(category===c.id?' active':'')+'" data-cat="'+c.id+'" onclick="filterByCategory(\''+c.id+'\')">'+c.icon+' '+c.name+'</span>';}).join("")+'</div><div id="prompt-grid" class="grid"><div class="empty" style="grid-column:1/-1"><div class="icon">⏳</div><p>加载中...</p></div></div>';
+  app.innerHTML = '<div class="hero"><h1>🪄 发现优质 AI 提示词</h1><p>覆盖文案、设计、编程、教育等 7 大分类</p><p style="font-size:13px;margin-top:4px">创作者发布赚钱 · 用户一键复制使用</p></div><div style="text-align:center;margin-bottom:20px"><span class="cat-tab active" id="sort-new" onclick="setSort(\'newest\')">🆕 最新</span><span class="cat-tab" id="sort-popular" onclick="setSort(\'popular\')">🔥 最热</span><span class="cat-tab" id="sort-free" onclick="setSort(\'free\')">🆓 免费</span></div><div class="search-bar"><span class="search-icon">🔍</span><input type="text" id="search-input" placeholder="搜索提示词..."></div><div class="categories" id="cat-tabs"><span class="cat-tab'+(category?'':' active')+'" data-cat="" onclick="filterByCategory(\'\')">🔥 全部</span>'+CATEGORIES.map(function(c){return '<span class="cat-tab'+(category===c.id?' active':'')+'" data-cat="'+c.id+'" onclick="filterByCategory(\''+c.id+'\')">'+c.icon+' '+c.name+'</span>';}).join("")+'</div><div id="prompt-grid" class="grid"><div class="skeleton-card"><div class="skeleton sk-cover"></div><div class="skeleton sk-line"></div><div class="skeleton sk-line short"></div><div class="skeleton sk-line medium"></div><div><div class="skeleton sk-tag"></div><div class="skeleton sk-tag"></div></div></div><div class="skeleton-card"><div class="skeleton sk-cover"></div><div class="skeleton sk-line"></div><div class="skeleton sk-line short"></div><div class="skeleton sk-line medium"></div><div><div class="skeleton sk-tag"></div><div class="skeleton sk-tag"></div></div></div><div class="skeleton-card"><div class="skeleton sk-cover"></div><div class="skeleton sk-line"></div><div class="skeleton sk-line short"></div><div class="skeleton sk-line medium"></div><div><div class="skeleton sk-tag"></div><div class="skeleton sk-tag"></div></div></div><div class="skeleton-card"><div class="skeleton sk-cover"></div><div class="skeleton sk-line"></div><div class="skeleton sk-line short"></div><div class="skeleton sk-line medium"></div><div><div class="skeleton sk-tag"></div><div class="skeleton sk-tag"></div></div></div><div class="skeleton-card"><div class="skeleton sk-cover"></div><div class="skeleton sk-line"></div><div class="skeleton sk-line short"></div><div class="skeleton sk-line medium"></div><div><div class="skeleton sk-tag"></div><div class="skeleton sk-tag"></div></div></div><div class="skeleton-card"><div class="skeleton sk-cover"></div><div class="skeleton sk-line"></div><div class="skeleton sk-line short"></div><div class="skeleton sk-line medium"></div><div><div class="skeleton sk-tag"></div><div class="skeleton sk-tag"></div></div></div></div></div>';
   loadPrompts(category);
   var timer;
   document.getElementById("search-input").addEventListener("input", function(){clearTimeout(timer);var q=this.value;timer=setTimeout(function(){loadPrompts(category,q);},400);});
@@ -56,6 +56,9 @@ async function renderHome(category) {
 
 var currentSort = "newest";
 var currentCategory = "";
+var currentPage = 0;
+var hasMore = true;
+var allPrompts = [];
 function setSort(sort){var mb=document.getElementById("load-more-btn");if(mb)mb.remove();
   currentSort = sort;
   document.querySelectorAll("#sort-new,#sort-hot,#sort-free").forEach(function(t){t.classList.remove("active");});
@@ -64,22 +67,28 @@ function setSort(sort){var mb=document.getElementById("load-more-btn");if(mb)mb.
 }
 function filterByCategory(cat){var mb=document.getElementById("load-more-btn");if(mb)mb.remove();document.querySelectorAll(".cat-tab").forEach(function(t){t.classList.toggle("active",t.dataset.cat===cat);});loadPrompts(cat,document.getElementById("search-input")?.value||"");}
 
-async function loadPrompts(category, search) { currentCategory = category||"";
+async function loadPrompts(category, search, append) { currentCategory = category||"";
   var grid = document.getElementById("prompt-grid");if(!grid)return;
-  try{var prompts=await getPrompts({category:category||undefined,search:search||undefined,sort:currentSort,price:currentSort==="free"?0:undefined});if(allPrompts.length===0){grid.innerHTML='<div class="empty" style="grid-column:1/-1"><div class="icon">📭</div><p>暂无提示词</p><p style="font-size:13px">成为第一个发布的人！</p></div>';return;}
+  if(!append){currentPage=0;hasMore=true;allPrompts=[];}
+  try{
+    var offset = currentPage * 12;
+    var prompts=await getPrompts({category:category||undefined,search:search||undefined,sort:currentSort,price:currentSort==="free"?0:undefined,offset:offset,limit:12});
+    if(!append){allPrompts=prompts;hasMore=prompts.length>=12;}
+    else{allPrompts=allPrompts.concat(prompts);hasMore=prompts.length>=12;}
+    currentPage++;if(allPrompts.length===0){grid.innerHTML='<div class="empty" style="grid-column:1/-1"><div class="icon">📭</div><p>暂无提示词</p><p style="font-size:13px">成为第一个发布的人！</p></div>';return;}
   grid.innerHTML=prompts.map(function(p){return '<a href="#/prompt/'+p.id+'" class="card">'+(p.cover_url?'<div class="card-cover" style="background-image:url('+escapeHtml(p.cover_url)+')"></div>':'')+'<div class="card-cat">'+getCatIcon(p.category)+' '+getCatName(p.category)+'</div><h3>'+escapeHtml(p.title)+'</h3><div class="card-desc">'+escapeHtml(p.description||"暂无描述")+'</div><div class="card-meta"><span class="card-price'+(p.price===0?' free':'')+'">'+(p.price===0?'免费':'¥'+(p.price/100).toFixed(2))+'</span><span class="card-stats">📥 '+(p.downloads||0)+' ⭐ '+(p.rating||0)+'</span></div><div class="platform-tags">'+(p.platforms||[]).map(function(pl){return '<span class="ptag">'+pl+'</span>';}).join("")+'<div class="tag-row">'+(p.tags||[]).slice(0,3).map(function(t){return '<span class="tag-badge" onclick="event.preventDefault();filterByTag(\''+t+'\')">#'+escapeHtml(t)+'</span>';}).join("")+'</div></div></a>';}).join("");}
   if(hasMore&&allPrompts.length>0){
     var moreBtn=document.getElementById("load-more-btn");
     if(!moreBtn){
       var btn=document.createElement("div");
       btn.id="load-more-btn";
-      btn.style.cssText="text-align:center;padding:20px;cursor:pointer";
+      btn.style.cssText="text-align:center;padding:20px";
       btn.innerHTML='<button class="btn-secondary" onclick="loadMore()" style="padding:10px 32px">📥 加载更多</button>';
       grid.parentElement.appendChild(btn);
     }
   }else{
-    var mb=document.getElementById("load-more-btn");
-    if(mb)mb.remove();
+    var mn=document.getElementById("load-more-btn");
+    if(mn)mn.remove();
   }
 }catch(e){grid.innerHTML='<div class="empty" style="grid-column:1/-1"><div class="icon">❌</div><p>加载失败</p></div>';}
 }
@@ -87,7 +96,7 @@ async function loadPrompts(category, search) { currentCategory = category||"";
 // ========== 详情页 ==========
 async function renderDetail(id) {
   var app = document.getElementById("app");
-  app.innerHTML = '<div class="detail"><div class="empty"><div class="icon">⏳</div><p>加载中...</p></div></div>';
+  app.innerHTML = '<div class="detail"><div class="skeleton-card" style="margin-bottom:16px"><div class="skeleton" style="height:32px;width:40%;margin-bottom:12px"></div><div class="skeleton" style="height:16px;width:60%;margin-bottom:8px"></div><div class="skeleton" style="height:16px;width:80%;margin-bottom:8px"></div><div class="skeleton" style="height:200px;border-radius:12px"></div></div>';
   var prompt = await getPrompt(id);
   if (!prompt) {app.innerHTML='<div class="detail"><div class="empty"><div class="icon">❌</div><p>提示词不存在</p></div></div>';return;}
   supabase.from("prompts").update({downloads:(prompt.downloads||0)+1}).eq("id",id).then(function(){});
@@ -122,7 +131,7 @@ app.innerHTML+='<div style="margin-top:20px;padding-top:20px;border-top:1px soli
 
 // ========== 个人中心 ==========
 function renderProfile(tab){var app=document.getElementById("app");if(!currentUser){navigateTo("/login");return;}tab=tab||"published";
-app.innerHTML='<div class="detail"><h1>👤 个人中心</h1><p style="color:#94a3b8;margin:8px 0">'+(currentUser.user_metadata?.full_name||currentUser.email)+'</p><div style="display:flex;gap:6px;margin:20px 0;flex-wrap:wrap"><span class="cat-tab'+(tab==="published"?" active":"")+'" onclick="renderProfile(\'published\')">📤 我的发布</span><span class="cat-tab'+(tab==="favorites"?" active":"")+'" onclick="renderProfile(\'favorites\')">⭐ 我的收藏</span><span class="cat-tab'+(tab==="purchases"?" active":"")+'" onclick="renderProfile(\'purchases\')">🛒 已购买</span></div><div id="profile-content"><div class="empty"><div class="icon">⏳</div><p>加载中...</p></div></div><button class="btn-secondary" onclick="logout()" style="margin-top:24px">退出登录</button></div>';
+app.innerHTML='<div class="detail"><h1>👤 个人中心</h1><p style="color:#94a3b8;margin:8px 0">'+(currentUser.user_metadata?.full_name||currentUser.email)+'</p><div style="display:flex;gap:6px;margin:20px 0;flex-wrap:wrap"><span class="cat-tab'+(tab==="published"?" active":"")+'" onclick="renderProfile(\'published\')">📤 我的发布</span><span class="cat-tab'+(tab==="favorites"?" active":"")+'" onclick="renderProfile(\'favorites\')">⭐ 我的收藏</span><span class="cat-tab'+(tab==="purchases"?" active":"")+'" onclick="renderProfile(\'purchases\')">🛒 已购买</span></div><div id="profile-content"><div class="empty"><div class="skeleton" style="height:40px;width:200px;margin:0 auto 16px"></div><p style="color:#475569">加载中...</p></div></div><button class="btn-secondary" onclick="logout()" style="margin-top:24px">退出登录</button></div>';
 loadProfileContent(tab);}
 
 async function loadProfileContent(tab){var container=document.getElementById("profile-content");if(!container)return;var prompts;if(tab==="published")prompts=await getMyPrompts();else if(tab==="favorites")prompts=await getMyFavorites();else prompts=await getMyPurchases();if(!prompts||prompts.length===0){container.innerHTML='<div class="empty"><div class="icon">📭</div><p>暂无内容</p></div>';return;}container.innerHTML=prompts.map(function(p){return'<a href="#/prompt/'+p.id+'" class="card" style="margin-bottom:12px"><div class="card-cat">'+getCatIcon(p.category)+' '+getCatName(p.category)+'</div><h3>'+escapeHtml(p.title)+'</h3><div class="card-desc">'+escapeHtml(p.description||"")+'</div><div class="card-meta"><span class="card-price'+(p.price===0?' free':'')+'">'+(p.price===0?'免费':'¥'+(p.price/100).toFixed(2))+'</span><span class="card-stats">📥 '+(p.downloads||0)+'</span></div></a>';}).join("");}
@@ -131,7 +140,7 @@ async function loadProfileContent(tab){var container=document.getElementById("pr
 // ========== 创作者主页 ==========
 async function renderAuthor(authorId) {
   var app = document.getElementById("app");
-  app.innerHTML = '<div class="empty"><div class="icon">⏳</div><p>加载中...</p></div>';
+  app.innerHTML = '<div class="empty"><div class="skeleton" style="height:40px;width:200px;margin:0 auto 16px"></div><p style="color:#475569">加载中...</p></div>';
   var info = await getAuthorInfo(authorId);
   var prompts = await getAuthorPrompts(authorId);
   var name = info ? (info.username || "匿名创作者") : "创作者";
@@ -184,17 +193,8 @@ async function renderFeatured() {
   section.innerHTML = html;
 }
 
+function loadMore(){loadPrompts(currentCategory,document.getElementById("search-input")?.value||"",true);}
 
-
-function loadMore() {
-  if (isLoadingMore || !hasMore) return;
-  isLoadingMore = true;
-  var btn = document.querySelector("#load-more-btn button");
-  if (btn) { btn.textContent = "⏳ 加载中..."; btn.disabled = true; }
-  loadPrompts(currentCategory, document.getElementById("search-input")?.value || "", true).then(function() {
-    isLoadingMore = false;
-  });
-}
 // ========== 标签筛选 ==========
 var currentTag = "";
 function filterByTag(tag) {
@@ -207,7 +207,7 @@ function filterByTag(tag) {
 // ========== 合集管理 ==========
 async function renderCollections() {
   var app = document.getElementById("app");
-  app.innerHTML = '<div class="empty"><div class="icon">⏳</div><p>加载中...</p></div>';
+  app.innerHTML = '<div class="empty"><div class="skeleton" style="height:40px;width:200px;margin:0 auto 16px"></div><p style="color:#475569">加载中...</p></div>';
   var collections = await getMyCollections();
   var html = '<div class="detail"><a href="#/profile" class="back-btn">← 返回</a><div style="display:flex;justify-content:space-between;align-items:center"><h1>📁 我的合集</h1><button class="btn-primary" onclick="showCreateCollection()" style="padding:8px 16px;font-size:14px">+ 新建合集</button></div>';
   if (!collections.length) {
@@ -232,7 +232,7 @@ function showCreateCollection() {
 
 async function renderCollectionDetail(id) {
   var app = document.getElementById("app");
-  app.innerHTML = '<div class="empty"><div class="icon">⏳</div><p>加载中...</p></div>';
+  app.innerHTML = '<div class="empty"><div class="skeleton" style="height:40px;width:200px;margin:0 auto 16px"></div><p style="color:#475569">加载中...</p></div>';
   var items = await getCollectionItems(id);
   var { data: collections } = await supabase.from("collections").select("*").eq("id", id).single();
   var col = collections;
@@ -252,7 +252,7 @@ async function renderCollectionDetail(id) {
 // ========== 数据统计 ==========
 async function renderStats() {
   var app = document.getElementById("app");
-  app.innerHTML = '<div class="empty"><div class="icon">⏳</div><p>加载中...</p></div>';
+  app.innerHTML = '<div class="empty"><div class="skeleton" style="height:40px;width:200px;margin:0 auto 16px"></div><p style="color:#475569">加载中...</p></div>';
   var stats = await getMyStats();
   var prompts = await getMyPrompts();
   var html = '<div class="detail"><a href="#/profile" class="back-btn">← 返回</a><h1>📊 数据统计</h1><div class="stats-grid"><div class="stat-card"><div class="stat-num">' + stats.promptCount + '</div><div class="stat-label">发布数量</div></div><div class="stat-card"><div class="stat-num">' + stats.totalDownloads + '</div><div class="stat-label">总下载</div></div><div class="stat-card"><div class="stat-num">' + stats.totalFavorites + '</div><div class="stat-label">总收藏</div></div></div>';
