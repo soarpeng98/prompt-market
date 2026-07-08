@@ -56,18 +56,32 @@ async function renderHome(category) {
 
 var currentSort = "newest";
 var currentCategory = "";
-function setSort(sort){
+function setSort(sort){var mb=document.getElementById("load-more-btn");if(mb)mb.remove();
   currentSort = sort;
   document.querySelectorAll("#sort-new,#sort-hot,#sort-free").forEach(function(t){t.classList.remove("active");});
   var sortId=sort==="popular"?"hot":sort==="newest"?"new":sort;var el=document.getElementById("sort-"+sortId);if(el)el.classList.add("active");
   loadPrompts(currentCategory, document.getElementById("search-input")?.value||"");
 }
-function filterByCategory(cat){document.querySelectorAll(".cat-tab").forEach(function(t){t.classList.toggle("active",t.dataset.cat===cat);});loadPrompts(cat,document.getElementById("search-input")?.value||"");}
+function filterByCategory(cat){var mb=document.getElementById("load-more-btn");if(mb)mb.remove();document.querySelectorAll(".cat-tab").forEach(function(t){t.classList.toggle("active",t.dataset.cat===cat);});loadPrompts(cat,document.getElementById("search-input")?.value||"");}
 
 async function loadPrompts(category, search) { currentCategory = category||"";
   var grid = document.getElementById("prompt-grid");if(!grid)return;
-  try{var prompts=await getPrompts({category:category||undefined,search:search||undefined,sort:currentSort,price:currentSort==="free"?0:undefined});if(prompts.length===0){grid.innerHTML='<div class="empty" style="grid-column:1/-1"><div class="icon">📭</div><p>暂无提示词</p><p style="font-size:13px">成为第一个发布的人！</p></div>';return;}
-  grid.innerHTML=prompts.map(function(p){return '<a href="#/prompt/'+p.id+'" class="card">'+(p.cover_url?'<div class="card-cover" style="background-image:url('+escapeHtml(p.cover_url)+')"></div>':'')+'<div class="card-cat">'+getCatIcon(p.category)+' '+getCatName(p.category)+'</div><h3>'+escapeHtml(p.title)+'</h3><div class="card-desc">'+escapeHtml(p.description||"暂无描述")+'</div><div class="card-meta"><span class="card-price'+(p.price===0?' free':'')+'">'+(p.price===0?'免费':'¥'+(p.price/100).toFixed(2))+'</span><span class="card-stats">📥 '+(p.downloads||0)+' ⭐ '+(p.rating||0)+'</span></div><div class="platform-tags">'+(p.platforms||[]).map(function(pl){return '<span class="ptag">'+pl+'</span>';}).join("")+'<div class="tag-row">'+(p.tags||[]).slice(0,3).map(function(t){return '<span class="tag-badge" onclick="event.preventDefault();filterByTag(\''+t+'\')">#'+escapeHtml(t)+'</span>';}).join("")+'</div></div></a>';}).join("");}catch(e){grid.innerHTML='<div class="empty" style="grid-column:1/-1"><div class="icon">❌</div><p>加载失败</p></div>';}
+  try{var prompts=await getPrompts({category:category||undefined,search:search||undefined,sort:currentSort,price:currentSort==="free"?0:undefined});if(allPrompts.length===0){grid.innerHTML='<div class="empty" style="grid-column:1/-1"><div class="icon">📭</div><p>暂无提示词</p><p style="font-size:13px">成为第一个发布的人！</p></div>';return;}
+  grid.innerHTML=prompts.map(function(p){return '<a href="#/prompt/'+p.id+'" class="card">'+(p.cover_url?'<div class="card-cover" style="background-image:url('+escapeHtml(p.cover_url)+')"></div>':'')+'<div class="card-cat">'+getCatIcon(p.category)+' '+getCatName(p.category)+'</div><h3>'+escapeHtml(p.title)+'</h3><div class="card-desc">'+escapeHtml(p.description||"暂无描述")+'</div><div class="card-meta"><span class="card-price'+(p.price===0?' free':'')+'">'+(p.price===0?'免费':'¥'+(p.price/100).toFixed(2))+'</span><span class="card-stats">📥 '+(p.downloads||0)+' ⭐ '+(p.rating||0)+'</span></div><div class="platform-tags">'+(p.platforms||[]).map(function(pl){return '<span class="ptag">'+pl+'</span>';}).join("")+'<div class="tag-row">'+(p.tags||[]).slice(0,3).map(function(t){return '<span class="tag-badge" onclick="event.preventDefault();filterByTag(\''+t+'\')">#'+escapeHtml(t)+'</span>';}).join("")+'</div></div></a>';}).join("");}
+  if(hasMore&&allPrompts.length>0){
+    var moreBtn=document.getElementById("load-more-btn");
+    if(!moreBtn){
+      var btn=document.createElement("div");
+      btn.id="load-more-btn";
+      btn.style.cssText="text-align:center;padding:20px;cursor:pointer";
+      btn.innerHTML='<button class="btn-secondary" onclick="loadMore()" style="padding:10px 32px">📥 加载更多</button>';
+      grid.parentElement.appendChild(btn);
+    }
+  }else{
+    var mb=document.getElementById("load-more-btn");
+    if(mb)mb.remove();
+  }
+}catch(e){grid.innerHTML='<div class="empty" style="grid-column:1/-1"><div class="icon">❌</div><p>加载失败</p></div>';}
 }
 
 // ========== 详情页 ==========
@@ -170,6 +184,17 @@ async function renderFeatured() {
   section.innerHTML = html;
 }
 
+
+
+function loadMore() {
+  if (isLoadingMore || !hasMore) return;
+  isLoadingMore = true;
+  var btn = document.querySelector("#load-more-btn button");
+  if (btn) { btn.textContent = "⏳ 加载中..."; btn.disabled = true; }
+  loadPrompts(currentCategory, document.getElementById("search-input")?.value || "", true).then(function() {
+    isLoadingMore = false;
+  });
+}
 // ========== 标签筛选 ==========
 var currentTag = "";
 function filterByTag(tag) {

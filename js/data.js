@@ -16,7 +16,9 @@ async function getPrompts(options) {
   else if (options?.sort === "price") query = query.order("price", { ascending: true });
   if (options?.price === 0) query = query.eq("price", 0);
   else query = query.order("created_at", { ascending: false });
-  query = query.limit(options?.limit || 50);
+  var limit = options?.limit || 12;
+  var off = options?.offset || 0;
+  query = query.range(off, off + limit - 1);
   var { data, error } = await query;
   return data || [];
 }

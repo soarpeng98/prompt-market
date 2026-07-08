@@ -194,3 +194,14 @@ footer{text-align:center;padding:40px;color:#334155;font-size:13px;border-top:1p
 /* 标签可点击 */
 .tag-badge{cursor:pointer}
 
+
+
+/* ========== 骨架屏 ========== */
+.skeleton{background:linear-gradient(90deg,#1e293b 25%,#334155 50%,#1e293b 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:8px}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.skeleton-card{background:#111827;border:1px solid #1e293b;border-radius:16px;padding:24px}
+.skeleton-card .sk-line{height:14px;margin-bottom:10px}
+.skeleton-card .sk-line.short{width:60%}
+.skeleton-card .sk-line.medium{width:80%}
+.skeleton-card .sk-cover{height:140px;border-radius:10px;margin-bottom:12px}
+.skeleton-card .sk-tag{display:inline-block;width:50px;height:12px;margin-right:6px}
