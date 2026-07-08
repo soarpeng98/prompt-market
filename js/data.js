@@ -62,3 +62,34 @@ async function getMyPurchases() {
   var { data } = await supabase.from("purchases").select("prompt_id, prompts(*)").eq("user_id", currentUser.id);
   return (data||[]).map(function(p){ return p.prompts; }).filter(Boolean);
 }
+
+// 编辑 prompt
+async function updatePrompt(id, updates) {
+  var { error } = await supabase.from("prompts").update(updates).eq("id", id).eq("author_id", currentUser.id);
+  return !error;
+}
+
+// 删除 prompt
+async function deletePrompt(id) {
+  var { error } = await supabase.from("prompts").delete().eq("id", id).eq("author_id", currentUser.id);
+  return !error;
+}
+
+// 评论
+async function getComments(promptId) {
+  var { data } = await supabase.from("comments").select("*").eq("prompt_id", promptId).order("created_at", {ascending: false});
+  return data || [];
+}
+
+async function addComment(promptId, content, rating) {
+  var { data, error } = await supabase.from("comments").insert({
+    prompt_id: promptId, user_id: currentUser.id, content: content, rating: rating,
+    user_name: currentUser.user_metadata?.full_name || currentUser.email
+  }).select().single();
+  if (error) { alert("评论失败: "+error.message); return null; }
+  return data;
+}
+
+async function deleteComment(id) {
+  await supabase.from("comments").delete().eq("id", id).eq("user_id", currentUser.id);
+}

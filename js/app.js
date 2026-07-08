@@ -27,17 +27,25 @@ window.addEventListener("load", render);
 // ========== 首页 ==========
 async function renderHome(category) {
   var app = document.getElementById("app");
-  app.innerHTML = '<div class="hero"><h1>🪄 发现优质 AI 提示词</h1><p>覆盖文案、设计、编程、教育等 7 大分类</p><p style="font-size:13px;margin-top:4px">创作者发布赚钱 · 用户一键复制使用</p></div><div class="search-bar"><span class="search-icon">🔍</span><input type="text" id="search-input" placeholder="搜索提示词..."></div><div class="categories" id="cat-tabs"><span class="cat-tab'+(category?'':' active')+'" data-cat="" onclick="filterByCategory(\'\')">🔥 全部</span>'+CATEGORIES.map(function(c){return '<span class="cat-tab'+(category===c.id?' active':'')+'" data-cat="'+c.id+'" onclick="filterByCategory(\''+c.id+'\')">'+c.icon+' '+c.name+'</span>';}).join("")+'</div><div id="prompt-grid" class="grid"><div class="empty" style="grid-column:1/-1"><div class="icon">⏳</div><p>加载中...</p></div></div>';
+  app.innerHTML = '<div class="hero"><h1>🪄 发现优质 AI 提示词</h1><p>覆盖文案、设计、编程、教育等 7 大分类</p><p style="font-size:13px;margin-top:4px">创作者发布赚钱 · 用户一键复制使用</p></div><div style="text-align:center;margin-bottom:20px"><span class="cat-tab active" id="sort-new" onclick="setSort('newest')">🆕 最新</span><span class="cat-tab" id="sort-hot" onclick="setSort('popular')">🔥 最热</span><span class="cat-tab" id="sort-free" onclick="setSort('free')">🆓 免费</span></div><div class="search-bar"><span class="search-icon">🔍</span><input type="text" id="search-input" placeholder="搜索提示词..."></div><div class="categories" id="cat-tabs"><span class="cat-tab'+(category?'':' active')+'" data-cat="" onclick="filterByCategory(\'\')">🔥 全部</span>'+CATEGORIES.map(function(c){return '<span class="cat-tab'+(category===c.id?' active':'')+'" data-cat="'+c.id+'" onclick="filterByCategory(\''+c.id+'\')">'+c.icon+' '+c.name+'</span>';}).join("")+'</div><div id="prompt-grid" class="grid"><div class="empty" style="grid-column:1/-1"><div class="icon">⏳</div><p>加载中...</p></div></div>';
   loadPrompts(category);
   var timer;
   document.getElementById("search-input").addEventListener("input", function(){clearTimeout(timer);var q=this.value;timer=setTimeout(function(){loadPrompts(category,q);},400);});
 }
 
+var currentSort = "newest";
+var currentCategory = "";
+function setSort(sort){
+  currentSort = sort;
+  document.querySelectorAll("#sort-new,#sort-hot,#sort-free").forEach(function(t){t.classList.remove("active");});
+  document.getElementById("sort-"+sort).classList.add("active");
+  loadPrompts(currentCategory, document.getElementById("search-input")?.value||"");
+}
 function filterByCategory(cat){document.querySelectorAll(".cat-tab").forEach(function(t){t.classList.toggle("active",t.dataset.cat===cat);});loadPrompts(cat,document.getElementById("search-input")?.value||"");}
 
-async function loadPrompts(category, search) {
+async function loadPrompts(category, search) { currentCategory = category||"";
   var grid = document.getElementById("prompt-grid");if(!grid)return;
-  try{var prompts=await getPrompts({category:category||undefined,search:search||undefined,sort:"newest"});if(prompts.length===0){grid.innerHTML='<div class="empty" style="grid-column:1/-1"><div class="icon">📭</div><p>暂无提示词</p><p style="font-size:13px">成为第一个发布的人！</p></div>';return;}
+  try{var prompts=await getPrompts({category:category||undefined,search:search||undefined,sort:currentSort,price:currentSort==="free"?0:undefined});if(prompts.length===0){grid.innerHTML='<div class="empty" style="grid-column:1/-1"><div class="icon">📭</div><p>暂无提示词</p><p style="font-size:13px">成为第一个发布的人！</p></div>';return;}
   grid.innerHTML=prompts.map(function(p){return '<a href="#/prompt/'+p.id+'" class="card"><div class="card-cat">'+getCatIcon(p.category)+' '+getCatName(p.category)+'</div><h3>'+escapeHtml(p.title)+'</h3><div class="card-desc">'+escapeHtml(p.description||"暂无描述")+'</div><div class="card-meta"><span class="card-price'+(p.price===0?' free':'')+'">'+(p.price===0?'免费':'¥'+(p.price/100).toFixed(2))+'</span><span class="card-stats">📥 '+(p.downloads||0)+' ⭐ '+(p.rating||0)+'</span></div><div class="platform-tags">'+(p.platforms||[]).map(function(pl){return '<span class="ptag">'+pl+'</span>';}).join("")+'</div></a>';}).join("");}catch(e){grid.innerHTML='<div class="empty" style="grid-column:1/-1"><div class="icon">❌</div><p>加载失败</p></div>';}
 }
 
@@ -52,7 +60,7 @@ async function renderDetail(id) {
   if(prompt.description)html+='<p style="color:#94a3b8;margin-bottom:20px;line-height:1.8">'+escapeHtml(prompt.description)+'</p>';
   html+='<div class="prompt-box"><button id="fav-btn" class="copy-btn" style="right:110px;background:#1e293b" onclick="handleFavorite(\''+prompt.id+'\')">☆ 收藏</button><button class="copy-btn" onclick="copyPrompt(\''+escapeAttr(prompt.content)+'\')">📋 复制</button><code>'+escapeHtml(prompt.content)+'</code></div>';
   if(prompt.price>0)html+='<div style="text-align:center;margin-top:16px"><span style="font-size:20px;font-weight:800;color:#34d399">¥'+(prompt.price/100).toFixed(2)+'</span><br><button class="btn-primary" style="margin-top:12px" onclick="purchase(\''+prompt.id+'\')">💰 购买并解锁</button></div>';
-  html+='</div>';
+  if(currentUser&&currentUser.id===prompt.author_id){html+='<div style="margin-top:20px;display:flex;gap:8px"><button class="btn-secondary" onclick="editPrompt(\''+prompt.id+'\')">✏️ 编辑</button><button class="btn-secondary" style="color:#ef4444" onclick="if(confirm(\'确定删除？\'))deletePromptAndGo(\''+prompt.id+'\')">🗑️ 删除</button></div>';}html+=renderComments(prompt.id);html+='</div>';
   app.innerHTML=html;
   if(currentUser){isFavorited(prompt.id).then(function(faved){var btn=document.getElementById("fav-btn");if(btn){btn.textContent=faved?"★ 已收藏":"☆ 收藏";btn.style.background=faved?"#7c3aed":"#1e293b";}});}
 }
@@ -89,4 +97,52 @@ function getCatName(id){var c=CATEGORIES.find(function(x){return x.id===id});ret
 function getCatIcon(id){var c=CATEGORIES.find(function(x){return x.id===id});return c?c.icon:"📌";}
 function escapeHtml(s){var d=document.createElement("div");d.textContent=s;return d.innerHTML;}
 function escapeAttr(s){return s.replace(/'/g,"\'").replace(/"/g,'\"').replace(/\n/g,"\\n");}
+
+async function editPrompt(id){
+  var prompt = await getPrompt(id);
+  var app = document.getElementById("app");
+  app.innerHTML='<div class="detail"><h1 style="margin-bottom:24px">✏️ 编辑提示词</h1><div class="form-group"><label>标题</label><input type="text" id="edit-title" value="'+escapeAttr(prompt.title)+'"></div><div class="form-group"><label>描述</label><textarea id="edit-desc">'+escapeHtml(prompt.description||"")+'</textarea></div><div class="form-group"><label>Prompt 正文</label><textarea id="edit-content" style="min-height:200px">'+escapeHtml(prompt.content)+'</textarea></div><div class="form-group"><label>价格（元）</label><input type="number" id="edit-price" value="'+(prompt.price/100)+'" min="0" step="0.01" style="width:200px"></div><button class="btn-primary" onclick="saveEdit(\''+id+'\')">💾 保存</button><button class="btn-secondary" style="margin-left:8px" onclick="navigateTo(\'/prompt/'+id+'\')">取消</button></div>';
+}
+
+async function saveEdit(id){
+  var title=document.getElementById("edit-title").value.trim();
+  var content=document.getElementById("edit-content").value.trim();
+  if(!title||!content){alert("标题和内容不能为空");return;}
+  var ok=await updatePrompt(id,{title:title,description:document.getElementById("edit-desc").value.trim(),content:content,price:Math.round(parseFloat(document.getElementById("edit-price").value||0)*100)});
+  if(ok){showToast("✅ 已保存");navigateTo("/prompt/"+id);}
+}
+
+async function deletePromptAndGo(id){
+  await deletePrompt(id);
+  showToast("已删除");
+  navigateTo("/");
+}
+
+// 5. Comments
+function renderComments(promptId){
+  var containerId = "comments-"+promptId;
+  getComments(promptId).then(function(comments){
+    var div = document.getElementById(containerId);
+    if(!div)return;
+    var html='<div style="margin-top:24px;border-top:1px solid #1e293b;padding-top:16px"><h3 style="margin-bottom:12px">💬 评论 ('+comments.length+')</h3>';
+    if(currentUser){
+      html+='<div style="display:flex;gap:8px;margin-bottom:16px"><input type="text" id="comment-input-'+promptId+'" placeholder="写评论..." style="flex:1;padding:8px 12px;border-radius:8px;background:#1e293b;border:1px solid #334155;color:#e2e8f0;font-size:13px"><select id="rating-input-'+promptId+'" style="width:80px;padding:8px;border-radius:8px;background:#1e293b;border:1px solid #334155;color:#e2e8f0;font-size:13px"><option value="5">⭐⭐⭐⭐⭐</option><option value="4">⭐⭐⭐⭐</option><option value="3">⭐⭐⭐</option><option value="2">⭐⭐</option><option value="1">⭐</option></select><button class="btn-primary" style="padding:8px 16px;font-size:13px" onclick="submitComment(\''+promptId+'\')">发送</button></div>';
+    }
+    if(comments.length===0){html+='<p style="color:#475569;font-size:13px">暂无评论</p>';}
+    else{for(var i=0;i<comments.length;i++){var c=comments[i];html+='<div style="padding:10px 0;border-bottom:1px solid #1e293b"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-weight:600;font-size:13px">'+escapeHtml(c.user_name||"匿名")+'</span><span style="color:#f59e0b;font-size:12px">'+('⭐'.repeat(c.rating||0))+'</span></div><p style="color:#94a3b8;font-size:13px;margin-top:4px">'+escapeHtml(c.content)+'</p><span style="color:#475569;font-size:11px">'+new Date(c.created_at).toLocaleDateString("zh-CN")+'</span></div>';}}
+    html+='</div>';
+    div.innerHTML=html;
+  });
+  return '<div id="'+containerId+'"><div style="padding:12px 0;color:#475569;font-size:13px">⏳ 加载评论...</div></div>';
+}
+
+async function submitComment(promptId){
+  var input=document.getElementById("comment-input-"+promptId);
+  var rating=document.getElementById("rating-input-"+promptId);
+  var content=input.value.trim();
+  if(!content){alert("请输入评论内容");return;}
+  var ok=await addComment(promptId,content,parseInt(rating.value));
+  if(ok){input.value="";renderDetail(promptId);}
+}
+
 function showToast(msg){var t=document.createElement("div");t.className="toast";t.textContent=msg;document.body.appendChild(t);setTimeout(function(){t.remove();},2500);}
