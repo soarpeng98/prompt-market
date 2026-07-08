@@ -1,4 +1,4 @@
-
+﻿
 var currentUser = null;
 
 async function checkAuth() {
@@ -66,4 +66,27 @@ async function logout() {
   currentUser = null;
   updateAuthUI();
   navigateTo("/");
+}
+
+
+// 监听密码重置事件
+supabase.auth.onAuthStateChange(function(event, session) {
+  if (event === "PASSWORD_RECOVERY") {
+    // 有session了，直接显示设置密码页
+    var app = document.getElementById("app");
+    if (app) {
+      app.innerHTML = '<div class="login-box"><h2>🔑 设置新密码</h2><p style="color:#64748b;margin-bottom:16px">请输入你的新密码</p><form onsubmit="event.preventDefault();var pwd=document.getElementById(\'new-pwd\').value;var pwd2=document.getElementById(\'new-pwd2\').value;if(!pwd||pwd.length<6){alert(\'密码至少6位\');return;}if(pwd!==pwd2){alert(\'两次密码不一致\');return;}completeResetNow(pwd);"><div class="form-group"><input type="password" id="new-pwd" placeholder="新密码（6位以上）*" required minlength="6"></div><div class="form-group"><input type="password" id="new-pwd2" placeholder="确认新密码 *" required minlength="6"></div><button type="submit" class="btn-primary" style="width:100%">💾 重置密码</button></form></div>';
+    }
+  }
+});
+
+async function completeResetNow(newPassword) {
+  var { error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) {
+    alert("重置失败: " + error.message);
+  } else {
+    await supabase.auth.signOut();
+    var app = document.getElementById("app");
+    app.innerHTML = '<div class="login-box"><h2>✅ 密码已重置</h2><p style="color:#94a3b8;margin:16px 0">请使用新密码登录</p><a href="#/login" class="btn-primary" style="display:block;text-align:center">去登录</a></div>';
+  }
 }

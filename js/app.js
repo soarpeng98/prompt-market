@@ -15,7 +15,7 @@ function getRoute() {
   if (hash.startsWith("/category/")) return { page: "home", category: hash.split("/")[2] };
   if (hash === "/collections") return { page: "collections" };
   if (hash === "/stats") return { page: "stats" };
-  if (hash === "/set-password") return { page: "setPassword" };
+  
   if (hash === "/forgot") return { page: "forgot" };
   return { page: hash.slice(1) || "home" };
 }
@@ -33,7 +33,7 @@ async function render() {
   else if (route.page === "collections") renderCollections();
   else if (route.page === "collection") renderCollectionDetail(route.id);
   else if (route.page === "stats") renderStats();
-  else if (route.page === "setPassword") renderSetPassword();
+  
   else if (route.page === "forgot") renderForgotPassword();
     else renderHome();
   } catch(e) {
@@ -137,51 +137,7 @@ async function renderAuthor(authorId) {
 
 
 // ========== 重置密码处理 ==========
-// 全局检测：页面加载时检查是否有密码重置token
-(function() {
-  var hash = location.hash;
-  if (hash.includes("type=recovery")) {
-    // 提取token
-    var h = hash.substring(1);
-    var params = {};
-    h.split("&").forEach(function(p) {
-      var kv = p.split("=");
-      if (kv.length === 2) params[decodeURIComponent(kv[0])] = decodeURIComponent(kv[1]);
-    });
-    if (params.access_token && params.refresh_token) {
-      supabase.auth.setSession({
-        access_token: params.access_token,
-        refresh_token: params.refresh_token
-      }).then(function(res) {
-        if (!res.error) {
-          location.hash = "#/set-password";
-          render();
-        }
-      });
-    }
-  }
-})();
 
-async function renderSetPassword() {
-  var app = document.getElementById("app");
-  var { data } = await supabase.auth.getSession();
-  if (!data.session) {
-    app.innerHTML = '<div class="login-box"><h2>🔗 链接已过期</h2><p style="color:#94a3b8;margin:16px 0">重置链接已过期或无效，请重新申请。</p><a href="#/login" class="btn-primary" style="display:block;text-align:center">返回登录</a></div>';
-    return;
-  }
-  app.innerHTML = '<div class="login-box"><h2>🔑 设置新密码</h2><p style="color:#94a3b8;margin-bottom:16px">请输入你的新密码</p><form onsubmit="event.preventDefault();var pwd=document.getElementById(\'new-pwd\').value;var pwd2=document.getElementById(\'new-pwd2\').value;if(!pwd||pwd.length<6){alert(\'密码至少6位\');return;}if(pwd!==pwd2){alert(\'两次密码不一致\');return;}completeReset(pwd);"><div class="form-group"><input type="password" id="new-pwd" placeholder="新密码（6位以上）*" required minlength="6"></div><div class="form-group"><input type="password" id="new-pwd2" placeholder="确认新密码 *" required minlength="6"></div><button type="submit" class="btn-primary" style="width:100%">💾 重置密码</button></form></div>';
-}
-
-async function completeReset(newPassword) {
-  var { error } = await supabase.auth.updateUser({ password: newPassword });
-  if (error) {
-    alert("重置失败: " + error.message);
-  } else {
-    await supabase.auth.signOut();
-    var app = document.getElementById("app");
-    app.innerHTML = '<div class="login-box"><h2>✅ 密码已重置</h2><p style="color:#94a3b8;margin:16px 0">请使用新密码登录</p><a href="#/login" class="btn-primary" style="display:block;text-align:center">去登录</a></div>';
-  }
-}
 
 // ========== 忘记密码 ==========
 function renderForgotPassword() {
