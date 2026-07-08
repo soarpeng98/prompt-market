@@ -15,7 +15,7 @@ function getRoute() {
   return { page: hash.slice(1) || "home" };
 }
 
-async function render() {
+async function render() { try {
   var route = getRoute();
   await checkAuth();
   if (route.page === "home") await renderHome(route.category);
@@ -26,7 +26,7 @@ async function render() {
   else renderHome();
 }
 
-function navigateTo(path) { location.hash = "#" + path; }
+} catch(e) { var a=document.getElementById("app"); if(a) a.innerHTML="<div style=\"padding:40px;color:red;text-align:center\"><h2>❌ 运行时错误</h2><pre style=\"background:#1a1a2e;padding:16px;border-radius:8px;text-align:left;color:#f87171;overflow:auto\">"+e.message+"\\n\\n"+e.stack+"</pre></div>"; } } function navigateTo(path) { location.hash = "#" + path; }
 window.addEventListener("hashchange", render);
 window.addEventListener("load", render);
 
