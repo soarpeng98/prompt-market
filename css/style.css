@@ -186,3 +186,11 @@ footer{text-align:center;padding:40px;color:#334155;font-size:13px;border-top:1p
   .stat-card .stat-num{font-size:24px}
   .featured-card{min-width:200px}
 }
+
+/* ========== 卡片封面图 ========== */
+.card-cover{height:140px;background-size:cover;background-position:center;background-color:#1e293b;border-radius:10px;margin-bottom:12px}
+.card-cover+.card-cat{margin-top:0}
+
+/* 标签可点击 */
+.tag-badge{cursor:pointer}
+

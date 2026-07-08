@@ -14,6 +14,7 @@ async function getPrompts(options) {
   if (options?.search) query = query.or("title.ilike.%"+options.search+"%,description.ilike.%"+options.search+"%");
   if (options?.sort === "popular") query = query.order("downloads", { ascending: false });
   else if (options?.sort === "price") query = query.order("price", { ascending: true });
+  if (options?.price === 0) query = query.eq("price", 0);
   else query = query.order("created_at", { ascending: false });
   query = query.limit(options?.limit || 50);
   var { data, error } = await query;
@@ -26,6 +27,7 @@ async function getPrompt(id) {
 async function createPrompt(prompt) {
   prompt.author_id = currentUser.id;
   prompt.author_name = currentUser.user_metadata?.full_name || currentUser.email;
+  prompt.cover_url = prompt.cover_url || "";
   var { data, error } = await supabase.from("prompts").insert(prompt).select().single();
   if (error) alert("创建失败: " + error.message);
   return data;
@@ -169,4 +171,13 @@ async function getMyStats() {
     totalFavorites += (s.favorite_count || 0);
   });
   return { totalViews: totalViews, totalDownloads: totalDownloads, totalFavorites: totalFavorites, promptCount: all.length };
+}
+
+// 精选自荐
+async function toggleFeatured(promptId) {
+  var { data: prompt } = await supabase.from("prompts").select("featured").eq("id", promptId).eq("author_id", currentUser.id).single();
+  if (!prompt) return false;
+  var newVal = !prompt.featured;
+  await supabase.from("prompts").update({ featured: newVal }).eq("id", promptId);
+  return newVal;
 }
