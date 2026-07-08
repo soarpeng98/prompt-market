@@ -1,0 +1,21 @@
+﻿{
+  "name": "提示词PRO - AI Prompt 交易市场",
+  "short_name": "提示词PRO",
+  "description": "发现和购买优质AI提示词，覆盖文案写作、设计创意、编程开发等7大分类",
+  "start_url": "/prompt-market/",
+  "display": "standalone",
+  "background_color": "#0a0e1a",
+  "theme_color": "#6366f1",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

@@ -108,13 +108,13 @@ async function renderDetail(id) {
   var html='<div class="detail"><a href="#/" class="back-btn">← 返回列表</a><h1>'+escapeHtml(prompt.title)+'</h1><div class="meta-row"><span>'+getCatIcon(prompt.category)+' '+getCatName(prompt.category)+'</span><span>作者：'+escapeHtml(prompt.author_name||"匿名")+'</span><span>📥 '+(prompt.downloads||0)+' 次</span><span>'+new Date(prompt.created_at).toLocaleDateString("zh-CN")+'</span></div><div class="platform-tags" style="margin-bottom:16px">'+(prompt.platforms||[]).map(function(p){return '<span class="ptag">'+p+'</span>';}).join("")+'</div>';
   if(prompt.description)html+='<p style="color:#94a3b8;margin-bottom:20px;line-height:1.8">'+escapeHtml(prompt.description)+'</p>';
   html+='<div class="prompt-box"><button id="fav-btn" class="copy-btn" style="right:110px;background:#1e293b" onclick="handleFavorite(\''+prompt.id+'\')">☆ 收藏</button><button class="copy-btn" style="right:110px;background:#1e293b" onclick="showCollectionPicker(\''+prompt.id+'\')">📁 合集</button><button class="copy-btn" onclick="copyPrompt(\''+prompt.id+'\')">☆ 收藏</button><button class="copy-btn" onclick="copyPrompt(\''+escapeAttr(prompt.content)+'\')">📋 复制</button><code>'+escapeHtml(prompt.content)+'</code></div>';
-  if(prompt.price>0)html+='<div style="text-align:center;margin-top:16px"><span style="font-size:20px;font-weight:800;color:#34d399">¥'+(prompt.price/100).toFixed(2)+'</span><br><button class="btn-primary" style="margin-top:12px" onclick="purchase(\''+prompt.id+'\')">💰 购买并解锁</button></div>';
+  if(prompt.price>0)html+='<div style="text-align:center;margin-top:16px"><span style="font-size:20px;font-weight:800;color:#34d399">¥'+(prompt.price/100).toFixed(2)+'</span><br><button class="btn-primary" style="margin-top:12px" id="buy-btn-'+prompt.id+'" onclick="purchase(\''+prompt.id+'\')">💰 购买并解锁</button></div>';
   if(currentUser&&currentUser.id===prompt.author_id){html+='<div style="margin-top:20px;display:flex;gap:8px"><button class="btn-secondary" onclick="editPrompt(\''+prompt.id+'\')">✏️ 编辑</button><button class="btn-secondary" style="margin-left:8px" onclick="toggleFeaturedAndGo(\''+prompt.id+'\')">'+(prompt.featured?'⭐ 取消精选':'☆ 自荐精选')+'</button><button class="btn-secondary" style="color:#ef4444" onclick="if(confirm(\'确定删除？\'))deletePromptAndGo(\''+prompt.id+'\')">🗑️ 删除</button></div>';}html+=renderComments(prompt.id);html+='</div>';
   app.innerHTML=html;
   if(currentUser){isFavorited(prompt.id).then(function(faved){var btn=document.getElementById("fav-btn");if(btn){btn.textContent=faved?"★ 已收藏":"☆ 收藏";btn.style.background=faved?"#7c3aed":"#1e293b";}});}
 }
 
-async function handleFavorite(promptId){if(!currentUser){navigateTo("/login");return;}var faved=await toggleFavorite(promptId);var btn=document.getElementById("fav-btn");if(btn){btn.textContent=faved?"★ 已收藏":"☆ 收藏";btn.style.background=faved?"#7c3aed":"#1e293b";}}
+async function handleFavorite(promptId){if(!currentUser){navigateTo("/login");return;}var alreadyBought=await isPurchased(promptId);if(alreadyBought){alert("你已经购买过了！");return;}var faved=await toggleFavorite(promptId);var btn=document.getElementById("fav-btn");if(btn){btn.textContent=faved?"★ 已收藏":"☆ 收藏";btn.style.background=faved?"#7c3aed":"#1e293b";}}
 function copyPrompt(text){navigator.clipboard.writeText(text).then(function(){showToast("✅ 已复制！去 AI 平台粘贴使用");});}
 async function purchase(promptId){if(!currentUser){navigateTo("/login");return;}var{error}=await supabase.from("purchases").insert({user_id:currentUser.id,prompt_id:promptId});if(error){alert("购买失败："+error.message);return;}showToast("🎉 购买成功！");renderDetail(promptId);}
 
@@ -158,6 +158,12 @@ async function renderAuthor(authorId) {
     }).join("") + '</div>';
   }
   app.innerHTML = html;
+  if(prompt.price>0&&currentUser&&currentUser.id!==prompt.author_id){
+    isPurchased(id).then(function(yes){
+      var btn=document.getElementById("buy-btn-"+id);
+      if(btn&&yes){btn.textContent="✅ 已购买";btn.disabled=true;btn.style.background="#059669";btn.style.cursor="default";}
+    });
+  }
 }
 
 

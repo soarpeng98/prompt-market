@@ -20,14 +20,21 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE TRIGGER on_comment_insert
+DROP TRIGGER IF EXISTS on_comment_insert ON comments;
+CREATE TRIGGER on_comment_insert
   AFTER INSERT ON comments
   FOR EACH ROW EXECUTE FUNCTION update_prompt_rating();
 
 -- 权限
 ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "任何人都能查看评论" ON comments;
 CREATE POLICY "任何人都能查看评论" ON comments FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "登录用户可以评论" ON comments;
 CREATE POLICY "登录用户可以评论" ON comments FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "用户可以删除自己的评论" ON comments;
 CREATE POLICY "用户可以删除自己的评论" ON comments FOR DELETE USING (auth.uid() = user_id);
 
 -- 编辑权限：作者可以更新自己的prompts

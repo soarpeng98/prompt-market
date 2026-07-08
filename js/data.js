@@ -61,6 +61,12 @@ async function getMyPrompts() {
   var { data } = await supabase.from("prompts").select("*").eq("author_id", currentUser.id).order("created_at", { ascending: false });
   return data || [];
 }
+
+async function isPurchased(promptId) {
+  if (!currentUser) return false;
+  var { data } = await supabase.from("purchases").select("*").eq("user_id", currentUser.id).eq("prompt_id", promptId).single();
+  return !!data;
+}
 async function getMyPurchases() {
   if (!currentUser) return [];
   var { data } = await supabase.from("purchases").select("prompt_id, prompts(*)").eq("user_id", currentUser.id);
