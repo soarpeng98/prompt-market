@@ -114,9 +114,9 @@ async function renderDetail(id) {
   if(currentUser){isFavorited(prompt.id).then(function(faved){var btn=document.getElementById("fav-btn");if(btn){btn.textContent=faved?"★ 已收藏":"☆ 收藏";btn.style.background=faved?"#7c3aed":"#1e293b";}});}
 }
 
-async function handleFavorite(promptId){if(!currentUser){navigateTo("/login");return;}var alreadyBought=await isPurchased(promptId);if(alreadyBought){alert("你已经购买过了！");return;}var faved=await toggleFavorite(promptId);var btn=document.getElementById("fav-btn");if(btn){btn.textContent=faved?"★ 已收藏":"☆ 收藏";btn.style.background=faved?"#7c3aed":"#1e293b";}}
+async function handleFavorite(promptId){if(!currentUser){navigateTo("/login");return;}var faved=await toggleFavorite(promptId);var btn=document.getElementById("fav-btn");if(btn){btn.textContent=faved?"★ 已收藏":"☆ 收藏";btn.style.background=faved?"#7c3aed":"#1e293b";}}
 function copyPrompt(text){navigator.clipboard.writeText(text).then(function(){showToast("✅ 已复制！去 AI 平台粘贴使用");});}
-async function purchase(promptId){if(!currentUser){navigateTo("/login");return;}var{error}=await supabase.from("purchases").insert({user_id:currentUser.id,prompt_id:promptId});if(error){alert("购买失败："+error.message);return;}showToast("🎉 购买成功！");renderDetail(promptId);}
+async function purchase(promptId){if(!currentUser){navigateTo("/login");return;}var already=await isPurchased(promptId);if(already){alert("你已经购买过了！");return;}var{error}=await supabase.from("purchases").insert({user_id:currentUser.id,prompt_id:promptId});if(error){alert("购买失败："+error.message);return;}showToast("🎉 购买成功！");renderDetail(promptId);}
 
 // ========== 创建页 ==========
 function renderCreate(){var app=document.getElementById("app");if(!currentUser){navigateTo("/login");return;}
