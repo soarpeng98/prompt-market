@@ -59,7 +59,7 @@ var currentCategory = "";
 function setSort(sort){
   currentSort = sort;
   document.querySelectorAll("#sort-new,#sort-hot,#sort-free").forEach(function(t){t.classList.remove("active");});
-  document.getElementById("sort-"+sort).classList.add("active");
+  var sortId=sort==="popular"?"hot":sort==="newest"?"new":sort;var el=document.getElementById("sort-"+sortId);if(el)el.classList.add("active");
   loadPrompts(currentCategory, document.getElementById("search-input")?.value||"");
 }
 function filterByCategory(cat){document.querySelectorAll(".cat-tab").forEach(function(t){t.classList.toggle("active",t.dataset.cat===cat);});loadPrompts(cat,document.getElementById("search-input")?.value||"");}
