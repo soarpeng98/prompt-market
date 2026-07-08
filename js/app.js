@@ -99,7 +99,7 @@ async function loadPrompts(category, search, append) { currentCategory = categor
   }catch(e){grid.innerHTML='<div class="empty" style="grid-column:1/-1"><div class="icon">❌</div><p>加载失败</p></div>';}
 }
 
-function renderDetail(id) {
+async function renderDetail(id) {
   var app = document.getElementById("app");
   app.innerHTML = '<div class="detail"><div class="skeleton-card" style="margin-bottom:16px"><div class="skeleton" style="height:32px;width:40%"></div><div class="skeleton" style="height:16px;width:60%;margin-top:12px"></div><div class="skeleton" style="height:16px;width:80%;margin-top:8px"></div><div class="skeleton" style="height:200px;border-radius:12px;margin-top:16px"></div></div>';
   var prompt = await getPrompt(id);
