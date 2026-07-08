@@ -15,6 +15,7 @@ function getRoute() {
   if (hash.startsWith("/category/")) return { page: "home", category: hash.split("/")[2] };
   if (hash === "/collections") return { page: "collections" };
   if (hash === "/stats") return { page: "stats" };
+  if (hash === "/forgot") return { page: "forgot" };
   return { page: hash.slice(1) || "home" };
 }
 
@@ -31,6 +32,7 @@ async function render() {
   else if (route.page === "collections") renderCollections();
   else if (route.page === "collection") renderCollectionDetail(route.id);
   else if (route.page === "stats") renderStats();
+  else if (route.page === "forgot") renderForgotPassword();
     else renderHome();
   } catch(e) {
     var a = document.getElementById("app");
@@ -63,7 +65,7 @@ function filterByCategory(cat){document.querySelectorAll(".cat-tab").forEach(fun
 async function loadPrompts(category, search) { currentCategory = category||"";
   var grid = document.getElementById("prompt-grid");if(!grid)return;
   try{var prompts=await getPrompts({category:category||undefined,search:search||undefined,sort:currentSort,price:currentSort==="free"?0:undefined});if(prompts.length===0){grid.innerHTML='<div class="empty" style="grid-column:1/-1"><div class="icon">📭</div><p>暂无提示词</p><p style="font-size:13px">成为第一个发布的人！</p></div>';return;}
-  grid.innerHTML=prompts.map(function(p){return '<a href="#/prompt/'+p.id+'" class="card"><div class="card-cat">'+getCatIcon(p.category)+' '+getCatName(p.category)+'</div><h3>'+escapeHtml(p.title)+'</h3><div class="card-desc">'+escapeHtml(p.description||"暂无描述")+'</div><div class="card-meta"><span class="card-price'+(p.price===0?' free':'')+'">'+(p.price===0?'免费':'¥'+(p.price/100).toFixed(2))+'</span><span class="card-stats">📥 '+(p.downloads||0)+' ⭐ '+(p.rating||0)+'</span></div><div class="platform-tags">'+(p.platforms||[]).map(function(pl){return '<span class="ptag">'+pl+'</span>';}).join("")+'</div></a>';}).join("");}catch(e){grid.innerHTML='<div class="empty" style="grid-column:1/-1"><div class="icon">❌</div><p>加载失败</p></div>';}
+  grid.innerHTML=prompts.map(function(p){return '<a href="#/prompt/'+p.id+'" class="card"><div class="card-cat">'+getCatIcon(p.category)+' '+getCatName(p.category)+'</div><h3>'+escapeHtml(p.title)+'</h3><div class="card-desc">'+escapeHtml(p.description||"暂无描述")+'</div><div class="card-meta"><span class="card-price'+(p.price===0?' free':'')+'">'+(p.price===0?'免费':'¥'+(p.price/100).toFixed(2))+'</span><span class="card-stats">📥 '+(p.downloads||0)+' ⭐ '+(p.rating||0)+'</span></div><div class="platform-tags">'+(p.platforms||[]).map(function(pl){return '<span class="ptag">'+pl+'</span>';}).join("")+'<div class="tag-row">'+(p.tags||[]).slice(0,3).map(function(t){return '<span class="tag-badge">#'+escapeHtml(t)+'</span>';}).join("")+'</div></div></a>';}).join("");}catch(e){grid.innerHTML='<div class="empty" style="grid-column:1/-1"><div class="icon">❌</div><p>加载失败</p></div>';}
 }
 
 // ========== 详情页 ==========
@@ -75,7 +77,7 @@ async function renderDetail(id) {
   supabase.from("prompts").update({downloads:(prompt.downloads||0)+1}).eq("id",id).then(function(){});
   var html='<div class="detail"><a href="#/" class="back-btn">← 返回列表</a><h1>'+escapeHtml(prompt.title)+'</h1><div class="meta-row"><span>'+getCatIcon(prompt.category)+' '+getCatName(prompt.category)+'</span><span>作者：'+escapeHtml(prompt.author_name||"匿名")+'</span><span>📥 '+(prompt.downloads||0)+' 次</span><span>'+new Date(prompt.created_at).toLocaleDateString("zh-CN")+'</span></div><div class="platform-tags" style="margin-bottom:16px">'+(prompt.platforms||[]).map(function(p){return '<span class="ptag">'+p+'</span>';}).join("")+'</div>';
   if(prompt.description)html+='<p style="color:#94a3b8;margin-bottom:20px;line-height:1.8">'+escapeHtml(prompt.description)+'</p>';
-  html+='<div class="prompt-box"><button id="fav-btn" class="copy-btn" style="right:110px;background:#1e293b" onclick="handleFavorite(\''+prompt.id+'\')">☆ 收藏</button><button class="copy-btn" onclick="copyPrompt(\''+escapeAttr(prompt.content)+'\')">📋 复制</button><code>'+escapeHtml(prompt.content)+'</code></div>';
+  html+='<div class="prompt-box"><button id="fav-btn" class="copy-btn" style="right:110px;background:#1e293b" onclick="handleFavorite(\''+prompt.id+'\')">☆ 收藏</button><button class="copy-btn" style="right:110px;background:#1e293b" onclick="showCollectionPicker(\''+prompt.id+'\')">📁 合集</button><button class="copy-btn" onclick="copyPrompt(\''+prompt.id+'\')">☆ 收藏</button><button class="copy-btn" onclick="copyPrompt(\''+escapeAttr(prompt.content)+'\')">📋 复制</button><code>'+escapeHtml(prompt.content)+'</code></div>';
   if(prompt.price>0)html+='<div style="text-align:center;margin-top:16px"><span style="font-size:20px;font-weight:800;color:#34d399">¥'+(prompt.price/100).toFixed(2)+'</span><br><button class="btn-primary" style="margin-top:12px" onclick="purchase(\''+prompt.id+'\')">💰 购买并解锁</button></div>';
   if(currentUser&&currentUser.id===prompt.author_id){html+='<div style="margin-top:20px;display:flex;gap:8px"><button class="btn-secondary" onclick="editPrompt(\''+prompt.id+'\')">✏️ 编辑</button><button class="btn-secondary" style="color:#ef4444" onclick="if(confirm(\'确定删除？\'))deletePromptAndGo(\''+prompt.id+'\')">🗑️ 删除</button></div>';}html+=renderComments(prompt.id);html+='</div>';
   app.innerHTML=html;
@@ -98,7 +100,7 @@ app.innerHTML='<div class="login-box"><h2>🪄 提示词PRO</h2><p style="color:
 if(tab==="signup"){
   app.innerHTML+='<form onsubmit="event.preventDefault();var email=document.getElementById(\'signup-email\').value;var pwd=document.getElementById(\'signup-pwd\').value;var name=document.getElementById(\'signup-name\').value;if(!email||!pwd)alert(\'请填写邮箱和密码\');else signupWithEmail(email,pwd,name);"><div class="form-group"><input type="text" id="signup-name" placeholder="昵称（选填）"></div><div class="form-group"><input type="email" id="signup-email" placeholder="邮箱 *" required></div><div class="form-group"><input type="password" id="signup-pwd" placeholder="密码（6位以上）*" required minlength="6"></div><button type="submit" class="btn-primary" style="width:100%">📧 注册</button></form>';
 }else{
-  app.innerHTML+='<form onsubmit="event.preventDefault();var email=document.getElementById(\'login-email\').value;var pwd=document.getElementById(\'login-pwd\').value;if(!email||!pwd)alert(\'请填写邮箱和密码\');else loginWithEmail(email,pwd);"><div class="form-group"><input type="email" id="login-email" placeholder="邮箱" required></div><div class="form-group"><input type="password" id="login-pwd" placeholder="密码" required></div><button type="submit" class="btn-primary" style="width:100%">📧 登录</button></form>';
+  app.innerHTML+='<form onsubmit="event.preventDefault();var email=document.getElementById(\'login-email\').value;var pwd=document.getElementById(\'login-pwd\').value;if(!email||!pwd)alert(\'请填写邮箱和密码\');else loginWithEmail(email,pwd);"><div class="form-group"><input type="email" id="login-email" placeholder="邮箱" required></div><div class="form-group"><input type="password" id="login-pwd" placeholder="密码" required></div><button type="submit" class="btn-primary" style="width:100%">📧 登录</button><p style="margin-top:10px;font-size:13px;text-align:right"><a href="javascript:void(0)" onclick="renderForgotPassword()" style="color:#818cf8;text-decoration:none">忘记密码？</a></p></form>';
 }
 app.innerHTML+='<div style="margin-top:20px;padding-top:20px;border-top:1px solid #1e293b;text-align:center"><p style="color:#64748b;font-size:12px;margin-bottom:12px">或使用第三方账号</p><button class="btn-primary" onclick="loginWithGitHub()" style="width:100%;background:linear-gradient(135deg,#1f2937,#374151);border:1px solid #4b5563">🔑 GitHub 登录</button></div></div>';}
 
@@ -128,6 +130,25 @@ async function renderAuthor(authorId) {
   app.innerHTML = html;
 }
 
+
+
+// ========== 忘记密码 ==========
+function renderForgotPassword() {
+  var app = document.getElementById("app");
+  app.innerHTML = '<div class="login-box"><h2>🔑 重置密码</h2><p style="color:#64748b;margin-bottom:16px">输入注册邮箱，我们将发送重置链接</p><form onsubmit="event.preventDefault();var email=document.getElementById(\'reset-email\').value;if(!email){alert(\'请输入邮箱\');return;}resetPassword(email);"><div class="form-group"><input type="email" id="reset-email" placeholder="注册邮箱 *" required></div><button type="submit" class="btn-primary" style="width:100%">📧 发送重置链接</button></form><p style="margin-top:16px;font-size:13px"><a href="javascript:void(0)" onclick="navigateTo(\'/login\')" style="color:#818cf8;text-decoration:none">← 返回登录</a></p></div>';
+}
+
+async function resetPassword(email) {
+  var { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: location.origin + location.pathname + "#/login"
+  });
+  if (error) {
+    alert("发送失败: " + error.message);
+  } else {
+    var app = document.getElementById("app");
+    app.innerHTML = '<div class="login-box"><h2>📧 邮件已发送</h2><p style="color:#94a3b8;margin:16px 0">请检查 <b>' + email + '</b> 的收件箱，点击邮件中的链接重置密码。</p><p style="font-size:13px;color:#64748b">没收到？检查垃圾邮件箱</p><a href="#/login" class="btn-primary" style="display:block;margin-top:20px;text-align:center">返回登录</a></div>';
+  }
+}
 
 // ========== 精选轮播 ==========
 async function renderFeatured() {
@@ -210,6 +231,34 @@ async function renderStats() {
   }
   html += '</div>';
   app.innerHTML = html;
+}
+
+
+
+// ========== 添加到合集 ==========
+async function showCollectionPicker(promptId) {
+  if (!currentUser) { alert("请先登录"); return; }
+  var collections = await getMyCollections();
+  if (!collections.length) {
+    if (confirm("还没有合集，是否创建一个？")) {
+      var name = prompt("合集名称：");
+      if (name) {
+        var col = await createCollection(name, "");
+        if (col) await addToCollection(col.id, promptId);
+        showToast("✅ 已添加到合集");
+      }
+    }
+    return;
+  }
+  var list = collections.map(function(c) {
+    return '<div style="padding:10px 14px;cursor:pointer;border-radius:8px;margin:4px 0;background:#1e293b" onclick="addToCollection(\'' + c.id + '\',\'' + promptId + '\');var el=document.getElementById(\'collection-picker\');if(el)el.remove();showToast(\'✅ 已添加到「' + escapeHtml(c.name) + '\'\)">📁 ' + escapeHtml(c.name) + '</div>';
+  }).join("");
+  var overlay = document.createElement("div");
+  overlay.id = "collection-picker";
+  overlay.style.cssText = "position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:999;display:flex;align-items:center;justify-content:center";
+  overlay.innerHTML = '<div style="background:#0f172a;border:1px solid #334155;border-radius:16px;padding:24px;max-width:360px;width:90%;max-height:60vh;overflow-y:auto"><h3 style="margin-bottom:12px">📁 添加到合集</h3>' + list + '<button class="btn-secondary" style="width:100%;margin-top:8px" onclick="this.parentElement.parentElement.remove()">取消</button></div>';
+  overlay.addEventListener("click", function(e) { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
 }
 
 // ========== 工具函数 ==========
